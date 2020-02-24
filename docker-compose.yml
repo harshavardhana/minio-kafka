@@ -1,4 +1,4 @@
-version: '2'
+version: '3.3'
 
 services:
   kafka:
@@ -16,17 +16,18 @@ services:
       - kafka
     ports:
       - "9000:9000"
+    environment:
+      MINIO_NOTIFY_KAFKA_ENABLE_target1: "on"
+      MINIO_NOTIFY_KAFKA_BROKERS_target1: "kafka:9092"
+      MINIO_NOTIFY_KAFKA_TOPIC_target1: "minio-topic"
     volumes:
       - minio-data:/export
-      - minio-config:/root/.minio
     entrypoint: >
       /bin/sh -c "
       curl https://raw.githubusercontent.com/harshavardhana/minio-kafka/master/wait-for.sh -o wait-for.sh;
-      [ ! -f /root/.minio/config.json ] && curl https://raw.githubusercontent.com/harshavardhana/minio-kafka/master/config.json -o /root/.minio/config.json;
       chmod +x wait-for.sh;
       ./wait-for.sh kafka:9092 -- /usr/bin/docker-entrypoint.sh minio server /export;
       "
 
 volumes:
   minio-data:
-  minio-config:

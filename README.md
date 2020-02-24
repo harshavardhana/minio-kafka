@@ -4,8 +4,8 @@
 How to setup testbed Minio + Apache Kafka (using Docker) for testing bucket notifications.
 
 ## Prerequisites
-- Docker installed (Docker version 17.05.0-ce on Linux)
-- docker-compose installed (1.8.0)
+- Docker installed (Docker version 18.09.6 on Linux)
+- docker-compose installed (1.23.0)
 
 ## Setup Minio and Apache Kafka with docker-compose
 The setup will contain two containers:
@@ -16,13 +16,13 @@ The setup will contain two containers:
 In order to join those two containers, we will use docker-compose. Create `docker-compose.yml` file and put the following content:
 
 ```yml
-version: '2'
+version: '3.3'
 
 services:
   kafka:
     image: spotify/kafka
     environment:
-      - ADVERTISED_HOST=kafka
+      - ADVERTISED_HOST=172.17.0.1
       - ADVERTISED_PORT=9092
     ports:
       - "2181:2181"
@@ -34,20 +34,20 @@ services:
       - kafka
     ports:
       - "9000:9000"
+    environment:
+      MINIO_NOTIFY_KAFKA_ENABLE_target1: "on"
+      MINIO_NOTIFY_KAFKA_BROKERS_target1: "kafka:9092"
+      MINIO_NOTIFY_KAFKA_TOPIC_target1: "minio-topic"
     volumes:
       - minio-data:/export
-      - minio-config:/root/.minio
     entrypoint: >
       /bin/sh -c "
       curl https://raw.githubusercontent.com/harshavardhana/minio-kafka/master/wait-for.sh -o wait-for.sh;
-      [ ! -f /root/.minio/config.json ] && curl https://raw.githubusercontent.com/harshavardhana/minio-kafka/master/config.json -o /root/.minio/config.json;
       chmod +x wait-for.sh;
       ./wait-for.sh kafka:9092 -- /usr/bin/docker-entrypoint.sh minio server /export;
       "
-
 volumes:
   minio-data:
-  minio-config:
 ```
 
 This docker-compose file declares two containers. First one, `kafka` runs Kafka image developed by Spotify team (it includes Zookeeper). It exposes itself under `kafka` hostname. Two environment variables need to be set:
