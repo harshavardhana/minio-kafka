@@ -3,30 +3,47 @@ version: '3.3'
 services:
   kafka:
     image: spotify/kafka
+    hostname: kafka
     environment:
-      - ADVERTISED_HOST=172.17.0.1
+      - ADVERTISED_HOST=kafka
       - ADVERTISED_PORT=9092
     ports:
       - "2181:2181"
       - "9092:9092"
 
+  http-kafka:
+    image: y4m4/http-kafka
+    hostname: http-kakfa
+    environment:
+      DEBUG: "on"
+      MINIO_AUDIT_KAFKA_ENABLE: "on"
+      MINIO_AUDIT_KAFKA_BROKERS: "kafka:9092"
+      MINIO_AUDIT_KAFKA_TOPIC: "topic"
+    entrypoint: >
+      /bin/sh -c "
+      curl https://raw.githubusercontent.com/harshavardhana/minio-kafka/master/wait-for.sh -o wait-for.sh;
+      chmod +x wait-for.sh;
+      ./wait-for.sh kafka:9092 -- /http-kafka;
+      "
+
   minio:
-    image: minio/minio
+    image: minio/minio:RELEASE.2021-06-14T01-29-23Z
     depends_on:
       - kafka
+      - http-kafka
     ports:
       - "9000:9000"
     environment:
-      MINIO_NOTIFY_KAFKA_ENABLE_target1: "on"
-      MINIO_NOTIFY_KAFKA_BROKERS_target1: "kafka:9092"
-      MINIO_NOTIFY_KAFKA_TOPIC_target1: "minio-topic"
+       MINIO_AUDIT_WEBHOOK_ENABLE_target1: "on"
+       MINIO_AUDIT_WEBHOOK_ENDPOINT_target1: "http://http-kafka:4222/rest/kafka"
     volumes:
       - minio-data:/export
     entrypoint: >
       /bin/sh -c "
       curl https://raw.githubusercontent.com/harshavardhana/minio-kafka/master/wait-for.sh -o wait-for.sh;
       chmod +x wait-for.sh;
-      ./wait-for.sh kafka:9092 -- /usr/bin/docker-entrypoint.sh minio server /export;
+      microdnf install netcat;
+      ./wait-for.sh minio-kafka:4222 -- /usr/bin/docker-entrypoint.sh minio server /export;
       "
 
 volumes:
